@@ -35,7 +35,7 @@ Tapi nanti aku rencana akan tambah **GUI sederhana** sebagai antarmuka desktop (
 
 ## 🚀 Cara Kerjanya
 
-### 1. Jalankan semua service sekali klik:
+1. Jalankan semua service sekali klik:
 ```bash
 dev80 start
 
