@@ -1,0 +1,171 @@
+#!/bin/bash
+
+# Warna
+WHITE='\033[1;37m'
+GRAY='\033[0;37m'
+NC='\033[0m'
+
+# Path ke folder project kamu
+PROJECT_DIR="$HOME/monorepo-devenv"
+
+# Fungsi garis pembatas putih
+horizontal_line() {
+  printf "${WHITE}%0.s──" {1..60}
+  echo -e "${NC}"
+}
+
+# Fungsi kotak untuk judul
+draw_box() {
+  local text="$1"
+  local len=${#text}
+  local width=$((len + 4))
+  local line="+"
+  for ((i=0; i<width; i++)); do line="${line}-"; done
+  line="${line}+"
+  echo -e "${WHITE}${line}${NC}"
+  printf "${WHITE}| ${GRAY}%-${len}s ${WHITE}|${NC}\n" "$text"
+  echo -e "${WHITE}${line}${NC}"
+}
+
+# Splash screen logo/tool name
+splash_screen() {
+  clear
+  echo -e "${WHITE}
+  .--------------------------------------------------------------------------.
+  :       __                                                                 :
+  :    =='_))  __-:!:-     👁️                                                :
+  :      ,'. .'  ))-:!:-                                                     :
+  :     ((_,'  .'-:!:-                                                       :
+  :    ~^~~~^~~^~~~^~                                                        :
+  :   Dev80 - Docker Development Environment                                 :
+  :   (c) 2025 memel                                                         :
+  :   Version 1.0                                                            :
+  :                                                                          :
+  :   Usage:                                                                 :
+  :   dev80 [start|stop|restart|logs|enter <container>|status|mysql|clean|help]:
+  '--------------------------------------------------------------------------'
+${NC}"
+  horizontal_line
+}
+
+# Animasi progress bar (baterai)
+progress_bar() {
+  local duration=$1
+  local msg="$2"
+  local width=20
+  local fill="▰"
+  local empty="▱"
+  for ((i=0; i<=width; i++)); do
+    local bar=""
+    for ((j=0; j<i; j++)); do bar+="${fill}"; done
+    for ((j=i; j<width; j++)); do bar+="${empty}"; done
+    printf "\r${GRAY}%s [%s]${NC}" "$msg" "$bar"
+    sleep $(awk "BEGIN {print $duration/$width}")
+  done
+  echo ""
+}
+
+# Cek apakah folder ada
+if [ ! -d "$PROJECT_DIR" ]; then
+  draw_box "❌ Folder tidak ditemukan"
+  echo -e "${GRAY}$PROJECT_DIR${NC}"
+  horizontal_line
+  exit 1
+fi
+
+# Pindah ke folder project
+cd "$PROJECT_DIR" || exit 1
+
+# Fungsi bantu
+run_cmd() {
+  docker compose "$@"
+}
+
+# Fungsi status dengan tabel rapi
+check_status() {
+  horizontal_line
+  echo -e "${GRAY}📊 Status saat ini:${NC}"
+  horizontal_line
+  if [ "$(docker compose ps -q)" ]; then
+    docker compose ps --format "table {{.Name}}\t{{.State}}\t{{.Status}}\t{{.Ports}}" | column -t -s $'\t'
+    horizontal_line
+  else
+    echo -e "${GRAY}🛑 Tidak ada service yang jalan.${NC}"
+    horizontal_line
+  fi
+}
+
+# Tampilkan splash screen jika tidak ada argumen
+if [ $# -eq 0 ]; then
+  splash_screen
+  exit 0
+fi
+
+# Jalankan command
+case "$1" in
+  start)
+    splash_screen
+    draw_box "▶️ Memulai service..."
+    progress_bar 2 "🔋 Mengisi energi"
+    run_cmd up -d
+    draw_box "✅ Semua service telah dijalankan!"
+    ;;
+  stop)
+    draw_box "⏹️ Menghentikan service..."
+    progress_bar 2 "🔋 Mengosongkan energi"
+    run_cmd down
+    draw_box "🟡 Semua service telah dihentikan."
+    ;;
+  restart)
+    draw_box "🔄 Merestart service..."
+    progress_bar 1 "🔋 Mengosongkan energi"
+    run_cmd down
+    progress_bar 1 "🔋 Mengisi energi"
+    run_cmd up -d
+    draw_box "✅ Service berhasil direstart!"
+    ;;
+  logs)
+    draw_box "📜 Menampilkan log..."
+    run_cmd logs -f
+    ;;
+  enter)
+    if [ -z "$2" ]; then
+      draw_box "📌 Usage: dev80 enter [service-name]"
+      exit 1
+    fi
+    draw_box "🚪 Masuk ke container: $2"
+    run_cmd exec -it "$2" bash
+    ;;
+  status)
+    check_status
+    ;;
+  mysql)
+    draw_box "🛰️ Masuk ke MySQL Shell"
+    docker compose exec -it mysql mysql -u root -p
+    ;;
+  clean)
+    draw_box "🗑️ Membersihkan sisa container/image yang tidak dipakai"
+    progress_bar 1 "♻️ Membersihkan"
+    docker compose down -v --remove-orphans
+    docker system prune -f
+    draw_box "🧹 Sistem sudah dibersihkan!"
+    ;;
+  help)
+    draw_box "❓ Panduan Penggunaan"
+    echo -e "${GRAY}"
+    echo "dev80 start         # Jalankan semua service"
+    echo "dev80 stop          # Hentikan semua service"
+    echo "dev80 restart       # Restart service"
+    echo "dev80 logs          # Lihat log secara real-time"
+    echo "dev80 enter [name] # Masuk ke container tertentu"
+    echo "dev80 status        # Cek status container"
+    echo "dev80 mysql         # Masuk ke MySQL shell"
+    echo "dev80 clean         # Hapus container/image yang tidak terpakai"
+    echo -e "${NC}"
+    horizontal_line
+    ;;
+  *)
+    draw_box "🛠️ Penggunaan: dev80 [start|stop|restart|logs|enter <container>|status|mysql|clean|help]"
+    exit 1
+    ;;
+esac

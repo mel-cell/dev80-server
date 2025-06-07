@@ -1,0 +1,58 @@
+# version: '3.8'
+
+services:
+  # Apache + PHP 8.2
+  apache-php:
+    image: php:8.2-apache
+    container_name: monorepo-devenv-apache
+    ports:
+      - "8888:80"
+    volumes:
+      - ./www:/var/www/html
+      - ./apache-config/custom.conf:/etc/apache2/conf-available/custom.conf
+    restart: unless-stopped
+    networks:
+      - devnet
+    command: >
+      sh -c "
+        echo 'ServerName localhost' >> /etc/apache2/apache2.conf &&
+        ln -s /etc/apache2/conf-available/custom.conf /etc/apache2/conf-enabled/ &&
+        docker-php-entrypoint apache2-foreground
+      "
+
+  # MySQL Database
+  mysql:
+    image: mysql:8
+    container_name: monorepo-devenv-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: 
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - devnet
+
+  # phpMyAdmin untuk akses database
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: monorepo-devenv-phpmyadmin
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - devnet
+
+networks:
+  devnet:
+    driver: bridge
+
+volumes:
+  mysql_data:
