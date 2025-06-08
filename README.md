@@ -78,3 +78,7 @@ Rencana GUI:
 - Bisa dikembangkan untuk support Node.js, Python, Go
 - Cocok untuk developer full-stack di Linux (Fedora)
 - Desain modular → tinggal tambah fitur sesuai kebutuhan
+
+## 📄 Lisensi
+
+Proyek ini menggunakan lisensi [MIT](LICENSE).
