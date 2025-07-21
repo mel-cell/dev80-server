@@ -1,24 +1,22 @@
 # version: '3.8'
 
 services:
-  # Apache + PHP 8.2
+  # Apache + PHP 8.2 dengan ekstensi penting
   apache-php:
-    image: php:8.2-apache
+    build:
+      context: ./apache-php
+      dockerfile: Dockerfile
     container_name: monorepo-devenv-apache
     ports:
       - "8888:80"
     volumes:
       - ./www:/var/www/html
-      - ./apache-config/custom.conf:/etc/apache2/conf-available/custom.conf
+      # - ./apache-config/custom.conf:/etc/apache2/conf-enabled/custom.conf
     restart: unless-stopped
     networks:
       - devnet
-    command: >
-      sh -c "
-        echo 'ServerName localhost' >> /etc/apache2/apache2.conf &&
-        ln -s /etc/apache2/conf-available/custom.conf /etc/apache2/conf-enabled/ &&
-        docker-php-entrypoint apache2-foreground
-      "
+    depends_on:
+      - mysql
 
   # MySQL Database
   mysql:
@@ -26,7 +24,7 @@ services:
     container_name: monorepo-devenv-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: 
+      MYSQL_DATABASE: mysqldb
     ports:
       - "3306:3306"
     volumes:
@@ -50,9 +48,44 @@ services:
     networks:
       - devnet
 
+  # FTP Server (vsftpd)
+  ftp:
+    image: fauria/vsftpd
+    container_name: monorepo-devenv-ftp
+    ports:
+      - "21:21"
+      - "21000-21010:21000-21010" # Port untuk PASV
+    environment:
+      FTP_USER: wordpress
+      FTP_PASS: wordpress
+      PASV_ADDRESS: host.docker.internal # Untuk host Windows/macOS; kalau Linux gunakan IP Host
+      PASV_MIN_PORT: 21000
+      PASV_MAX_PORT: 21010
+      FILE_OPEN_MODE: 0666
+      LOCAL_UMASK: 022
+      LOG_STDOUT: "true"
+    volumes:
+      - ./www:/home/wordpress/ftp
+    restart: unless-stopped
+    networks:
+      - devnet
+
+  # DNS Server for *.localhost domains
+  dnsmasq:
+    image: jpillora/dnsmasq
+    container_name: monorepo-devenv-dns
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    command: --address=/.localhost/127.0.0.1
+    restart: unless-stopped
+    networks:
+      - devnet
+
 networks:
   devnet:
     driver: bridge
 
 volumes:
   mysql_data:
+    driver: local
