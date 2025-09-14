@@ -1,14 +1,29 @@
 # version: '3.8'
 
 services:
-  # Apache + PHP 8.2 dengan ekstensi penting
+  # Nginx as frontend proxy
+  nginx:
+    image: nginx:alpine
+    container_name: monorepo-devenv-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./www:/var/www/html
+    restart: unless-stopped
+    networks:
+      - devnet
+    depends_on:
+      - apache-php
+
+  # Apache + PHP 8.2 sebagai backend
   apache-php:
     build:
       context: ./apache-php
       dockerfile: Dockerfile
     container_name: monorepo-devenv-apache
-    ports:
-      - "8888:80"
+    expose:
+      - "80"
     volumes:
       - ./www:/var/www/html
       # - ./apache-config/custom.conf:/etc/apache2/conf-enabled/custom.conf
@@ -17,6 +32,7 @@ services:
       - devnet
     depends_on:
       - mysql
+      - postgresql
 
   # MySQL Database
   mysql:
@@ -33,17 +49,34 @@ services:
     networks:
       - devnet
 
-  # phpMyAdmin untuk akses database
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    container_name: monorepo-devenv-phpmyadmin
-    depends_on:
-      - mysql
+  # PostgreSQL Database
+  postgresql:
+    image: postgres:15
+    container_name: monorepo-devenv-postgresql
     environment:
-      PMA_HOST: mysql
-      MYSQL_ROOT_PASSWORD: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: postgresdb
     ports:
-      - "8080:80"
+      - "5432:5432"
+    volumes:
+      - postgresql_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - devnet
+
+  # pgAdmin untuk akses PostgreSQL
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: monorepo-devenv-pgadmin
+    depends_on:
+      - postgresql
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
     restart: unless-stopped
     networks:
       - devnet
@@ -88,4 +121,8 @@ networks:
 
 volumes:
   mysql_data:
+    driver: local
+  postgresql_data:
+    driver: local
+  pgadmin_data:
     driver: local

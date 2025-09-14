@@ -54,6 +54,30 @@ EOF
     fi
 done
 
+echo "--- Installing phpMyAdmin ---"
+if [ ! -d "${WWW_DIR}/phpmyadmin" ]; then
+    cd /tmp
+    wget -q https://www.phpmyadmin.net/downloads/phpMyAdmin-latest-all-languages.tar.gz
+    tar -xzf phpMyAdmin-latest-all-languages.tar.gz
+    mv phpMyAdmin-*-all-languages "${WWW_DIR}/phpmyadmin"
+    rm phpMyAdmin-latest-all-languages.tar.gz
+    # Create config.inc.php
+    cat > "${WWW_DIR}/phpmyadmin/config.inc.php" <<EOF
+<?php
+\$cfg['blowfish_secret'] = 'your_secret_key_here';
+\$i = 0;
+\$i++;
+\$cfg['Servers'][\$i]['auth_type'] = 'config';
+\$cfg['Servers'][\$i]['host'] = 'mysql';
+\$cfg['Servers'][\$i]['user'] = 'root';
+\$cfg['Servers'][\$i]['password'] = 'root';
+\$cfg['Servers'][\$i]['compress'] = false;
+\$cfg['Servers'][\$i]['AllowNoPassword'] = false;
+?>
+EOF
+    chown -R www-data:www-data "${WWW_DIR}/phpmyadmin"
+fi
+
 echo "--- Virtual Host generation complete ---"
 
 # Menjalankan perintah asli dari Docker image (memulai Apache)
