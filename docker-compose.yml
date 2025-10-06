@@ -81,6 +81,23 @@ services:
     networks:
       - devnet
 
+  # phpMyAdmin untuk akses MySQL
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: monorepo-devenv-phpmyadmin
+    depends_on:
+      - mysql
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - devnet
+
   # FTP Server (vsftpd)
   ftp:
     image: fauria/vsftpd
